@@ -17,6 +17,18 @@ pd.set_option('display.max_columns', None)
 
 pd.set_option('display.width',2000)
 
+############################################################################
+# %%
+# Helper functions
+def get_el_text( e ):
+
+    text = ""
+    if e is not None:
+        if e.text is not None:
+            text = e.text.strip()
+
+    return text
+
 
 ############################################################################
 # %%
@@ -91,13 +103,8 @@ def tablify( pbcore_dir:str ):
         # The normalized "guid" (without / or _) is stored as `asset_id`
         att = "[@source='http://americanarchiveinventory.org']"
         e = root.find("pbcore:pbcoreIdentifier"+att,ns)
-        aapb_pbcore_id = e.text if e is not None else ""
+        aapb_pbcore_id = get_el_text(e)
         asset_id = aapb_pbcore_id.replace('/', '-').replace('_', '-')
-
-        # Asset.sonyci_id
-        #att = "[@source='Sony Ci']"
-        #e = root.find("pbcore:pbcoreIdentifier"+att,ns)
-        #sonyci_id = e.text if e is not None else ""
 
         # Asset.sonyci_id
         # Takes the Sony Ci ID from the first non-empty matching element
@@ -106,7 +113,7 @@ def tablify( pbcore_dir:str ):
         sonyci_id = ""
         for e in es:
             if (not sonyci_id and e.text):
-                sonyci_id = e.text
+                sonyci_id = e.text.strip()
 
         #
         # Annotation elements 
@@ -114,34 +121,34 @@ def tablify( pbcore_dir:str ):
         # Asset.organization
         att = "[@annotationType='organization']"
         e = root.find("pbcore:pbcoreAnnotation"+att,ns)
-        organization = e.text if e is not None else ""
+        organization = get_el_text(e)
 
         # Asset.level_of_user_access
         att = "[@annotationType='Level of User Access']"
         e = root.find("pbcore:pbcoreAnnotation"+att,ns)
-        level_of_user_access = e.text if e is not None else ""
+        level_of_user_access = get_el_text(e)
 
         # Asset.special_collections
         # handling multiple values
         att = "[@annotationType='special_collections']"
         es = root.findall("pbcore:pbcoreAnnotation"+att,ns)
-        tlist = [ e.text for e in es ]
+        tlist = [ get_el_text(e) for e in es ]
         special_collections = ','.join(tlist)
 
         # Asset.transcript_status
         att = "[@annotationType='Transcript Status']"
         e = root.find("pbcore:pbcoreAnnotation"+att,ns)
-        transcript_status = e.text if e is not None else ""
+        transcript_status = get_el_text(e)
 
         # Asset.transcript_url
         att = "[@annotationType='Transcript URL']"
         e = root.find("pbcore:pbcoreAnnotation"+att,ns)
-        transcript_url = e.text if e is not None else ""
+        transcript_url = get_el_text(e)
 
         # Proxy Start Time
         att = "[@annotationType='Proxy Start Time']"
         e = root.find("pbcore:pbcoreAnnotation"+att,ns)
-        proxy_start_time = e.text if e is not None else ""
+        proxy_start_time = get_el_text(e)
 
         #
         # Date elements 
@@ -149,22 +156,22 @@ def tablify( pbcore_dir:str ):
         # Asset.broadcast_date
         att = "[@dateType='Broadcast']"
         e = root.find("pbcore:pbcoreAssetDate"+att,ns)
-        broadcast_date = e.text if e is not None else ""
+        broadcast_date = get_el_text(e)
 
         # Asset.created_date
         att = "[@dateType='Created']"
         e = root.find("pbcore:pbcoreAssetDate"+att,ns)
-        created_date = e.text if e is not None else ""
+        created_date = get_el_text(e)
 
         # Asset.copyright_date
         att = "[@dateType='Copyright']"
         e = root.find("pbcore:pbcoreAssetDate"+att,ns)
-        copyright_date = e.text if e is not None else ""
+        copyright_date = get_el_text(e)
 
         # Asset.date (no @dateType)
         es = root.findall("pbcore:pbcoreAssetDate",ns)
         esnoat = [e for e in es if 'dateType' not in e.attrib]  
-        date = esnoat[0].text if len(esnoat) > 0 else ""
+        date = get_el_text(esnoat[0]) if len(esnoat) > 0 else ""
 
         # Canonical date
         # Use a simple heuristic to set a single canonical date, given that 
@@ -187,47 +194,47 @@ def tablify( pbcore_dir:str ):
         # Asset.series_title
         att = "[@titleType='Series']"
         e = root.find("pbcore:pbcoreTitle"+att,ns)
-        series_title = e.text if e is not None else ""
+        series_title = get_el_text(e)
 
         # Asset.program_title
         att = "[@titleType='Program']"
         e = root.find("pbcore:pbcoreTitle"+att,ns)
-        program_title = e.text if e is not None else ""
+        program_title = get_el_text(e)
 
         # Asset.episode_title
         att = "[@titleType='Episode']"
         e = root.find("pbcore:pbcoreTitle"+att,ns)
-        episode_title = e.text if e is not None else ""
+        episode_title = get_el_text(e)
 
         # Asset.episode_number
         att = "[@titleType='Episode Number']"
         e = root.find("pbcore:pbcoreTitle"+att,ns)
-        episode_number = e.text if e is not None else ""
+        episode_number = get_el_text(e)
 
         # Asset.segment_title
         att = "[@titleType='Segment']"
         e = root.find("pbcore:pbcoreTitle"+att,ns)
-        segment_title = e.text if e is not None else ""
+        segment_title = get_el_text(e)
 
         # Asset.raw_footage_title
         att = "[@titleType='Raw Footage']"
         e = root.find("pbcore:pbcoreTitle"+att,ns)
-        raw_footage_title = e.text if e is not None else ""
+        raw_footage_title = get_el_text(e)
 
         # Asset.promo_title
         att = "[@titleType='Promo']"
         e = root.find("pbcore:pbcoreTitle"+att,ns)
-        promo_title = e.text if e is not None else ""
+        promo_title = get_el_text(e)
 
         # Asset.clip_title
         att = "[@titleType='Clip']"
         e = root.find("pbcore:pbcoreTitle"+att,ns)
-        clip_title = e.text if e is not None else ""
+        clip_title = get_el_text(e)
 
         # Asset.title (no @titleType)
         es = root.findall("pbcore:pbcoreTitle",ns)
         esnoat = [e for e in es if 'titleType' not in e.attrib]
-        title = esnoat[0].text if len(esnoat) > 0 else ""
+        title = get_el_text(esnoat[0]) if len(esnoat) > 0 else ""
 
         # Canonical title
         # Build a single canonical title, given that there might be several
@@ -256,7 +263,7 @@ def tablify( pbcore_dir:str ):
         # Asset.asset_types
         att = ""
         e = root.find("pbcore:pbcoreAssetType"+att,ns)
-        asset_type = e.text if e is not None else ""
+        asset_type = get_el_text(e)
 
 
         #
@@ -270,9 +277,9 @@ def tablify( pbcore_dir:str ):
         producing_organization = ""
         for pbcreator_e in pbcreators:
             crole_e = pbcreator_e.find("pbcore:creatorRole",ns)
-            crole = crole_e.text if crole_e is not None else ""
+            crole = get_el_text(crole_e)
             creator_e = pbcreator_e.find("pbcore:creator",ns)
-            creator = creator_e.text if creator_e is not None else ""
+            creator = get_el_text(creator_e)
             #print("Creator role:", crole, "Creator:", creator)
             if crole == "Producing Organization":
                 producing_organization = creator
@@ -313,9 +320,9 @@ def tablify( pbcore_dir:str ):
             mte = inst.find("pbcore:instantiationMediaType",ns)
             if mte is not None:
                 if inst.find("pbcore:instantiationDigital",ns) is not None:
-                    dig_mts.append(mte.text)
+                    dig_mts.append(get_el_text(mte))
                 elif inst.find("pbcore:instantiationPhysical",ns) is not None:
-                    phs_mts.append(mte.text)
+                    phs_mts.append(get_el_text(mte))
         if 'Moving Image' in dig_mts:
             media_type = 'Moving Image'
         elif 'Sound' in dig_mts:
@@ -342,10 +349,10 @@ def tablify( pbcore_dir:str ):
             if inst.find("pbcore:instantiationDigital",ns) is not None:
                 e = inst.find("pbcore:instantiationGenerations",ns)
                 if (not proxy_duration) and e is not None:
-                    if e.text == "Proxy":
+                    if ( get_el_text(e) == "Proxy" ):
                         e = inst.find("pbcore:instantiationDuration",ns)
                         if e is not None:
-                            proxy_duration = e.text
+                            proxy_duration = get_el_text(e)
 
 
         # Instantiation records
@@ -356,45 +363,43 @@ def tablify( pbcore_dir:str ):
             # handling multiple values by concatenating all of them into a |-separated list
             att = ""
             es = inst.findall("pbcore:instantiationIdentifier",ns)
-            # e.text is cast as str to handle a case where the element exists but
-            # has no text as with this guid: cpb-aacip-111-02c8693q        
-            tlist = [ str(e.text) for e in es ]
+            tlist = [ get_el_text(e) for e in es ]
             inst_identifiers = '|'.join(tlist)
 
             # Instantiation media type
             att = ""
             e = inst.find("pbcore:instantiationMediaType"+att,ns)
-            inst_media_type = e.text if e is not None else ""
+            inst_media_type = get_el_text(e)
 
             # Instantiation date
             att = ""
             e = inst.find("pbcore:instantiationDate"+att,ns)
-            inst_date = e.text if e is not None else ""
+            inst_date = get_el_text(e)
 
             # Instantiation digital format
             att = ""
             e = inst.find("pbcore:instantiationDigital"+att,ns)
-            inst_digital_format = e.text if e is not None else ""
+            inst_digital_format = get_el_text(e)
 
             # Instantiation physical format
             att = ""
             e = inst.find("pbcore:instantiationPhysical"+att,ns)
-            inst_physical_format = e.text if e is not None else ""
+            inst_physical_format = get_el_text(e)
 
             # Instantiation generations
             att = ""
             e = inst.find("pbcore:instantiationGenerations"+att,ns)
-            inst_generations = e.text if e is not None else ""
+            inst_generations = get_el_text(e)
 
             # Instantiation duration
             att = ""
             e = inst.find("pbcore:instantiationDuration"+att,ns)
-            inst_duration = e.text if e is not None else ""
+            inst_duration = get_el_text(e)
 
             # Instantiation location
             att = ""
             e = inst.find("pbcore:instantiationLocation"+att,ns)
-            inst_location = e.text if e is not None else ""
+            inst_location = get_el_text(e)
 
             # Add the collected instantiation-level values to the table
             insttbl.append([asset_id,
