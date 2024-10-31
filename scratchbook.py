@@ -18,8 +18,8 @@ import framify
 
 hardcoded_output_file = "./batch.csv"
 
-#hardcoded_pbcore_dir = "C:/Users/owen_king/localcode/aapb_catalog/pbcxml_digitized_2024-02-28"
-hardcoded_pbcore_dir = "C:/Users/owen_king/localcode/aapb_catalog/digitized_114"
+hardcoded_pbcore_dir = "C:/Users/owen_king/localcode/aapb_catalog/pbcxml_digitized_2024-02-28"
+#hardcoded_pbcore_dir = "C:/Users/owen_king/localcode/aapb_catalog/digitized_114"
 
 #hardcoded_pbcore_dir = "C:/Users/owen_king/kitchen/stovetop/shipment_34080_34125_NC_PBS/pbcore"
 #hardcoded_pbcore_dir = "C:/Users/owen_king/kitchen/stovetop/WIPR_transcripts/wipr_ams2_pbcore"
@@ -67,7 +67,6 @@ def filterproj1( asstdf ):
     projected = selected[ cols ]
 
     return projected
-
 
 
 def filterproj2( asstdf ):
@@ -138,6 +137,50 @@ def filterproj2( asstdf ):
 
     return projected
 
+
+def filterproj_show( asstdf ):
+
+    # columns for ZOOM, Series I
+    cols = ["asset_id", "sonyci_id", "series_title", "episode_number", "proxy_duration", "level_of_user_access", "transcript_status", "transcript_url"]
+
+    # mask for ZOOM, Series I
+    mask1 = asstdf["series_title"].str.contains('ZOOM') 
+
+    # want only Series I, not Series II
+    mask2 = ~asstdf["series_title"].str.contains('Series II') 
+    mask = mask1 & mask2
+
+    # apply mask and projection
+    selected = asstdf[ mask ]
+    projected = selected[ cols ]
+
+    # perform the use-case-relevant sort
+    resorted = projected.sort_values(by=["episode_number"])
+
+    return resorted
+
+# %%
+
+def with_transcripts( asstdf ):
+
+    cols = ["asset_id", "sonyci_id", "series_title", "episode_number", "proxy_duration", "level_of_user_access", "transcript_status", "transcript_url"]
+    mask0 = asstdf["transcript_url"] != ""
+    mask1 = asstdf["transcript_url"].str.contains('transcripts/cpb-aacip')  
+    mask2 = asstdf["transcript_url"].str.contains('amazonaws.com')
+    mask3 = asstdf["transcript_url"].str.contains('-transcript.json')
+    mask4 = asstdf["transcript_url"].str.contains('-transcript.txt')
+    mask = mask1 & mask2 & mask3 & mask4
+    mask = mask1 & mask2 & mask4
+    mask = mask0
+    mask = ~mask0
+
+    # apply mask and projection
+    selected = asstdf[ mask ]
+    projected = selected[ cols ]
+
+    return projected
+
+
 ############################################################################
 # %%
 # Define functions for I/O -- reading parameters and writing out results
@@ -155,9 +198,10 @@ print("Building full dataframes . . .")
 assttbl, insttbl = framify.tablify( hardcoded_pbcore_dir )
 asstdf, instdf, joindf = framify.inframe( assttbl, insttbl )
 print("Done.")
-print("Built dataframes: asstdf, instdf, joindf")
+print("Built dataframes: `asstdf`, `instdf`, `joindf`")
 
 projected = filterproj_main( asstdf )
+print("projected asstdf into `projected`")
 
 batch_csv = hardcoded_output_file
 
