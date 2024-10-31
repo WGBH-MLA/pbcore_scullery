@@ -575,7 +575,10 @@ def main():
     asstdf, instdf, joindf = inframe( assttbl, insttbl )
     projected = filterproj_main( asstdf )
 
+    print("PBCore XML files framified.")
+    print("Will write CSV file:", batch_csv)
     write_csv( projected, batch_csv )
+    print("Done.")
 
 
 
