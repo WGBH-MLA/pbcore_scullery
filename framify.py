@@ -48,8 +48,10 @@ def tablify( pbcore_dir:str ):
     xmlfilenames = glob.glob(pbcore_dir + "/*.xml")
 
     if len(filenames) > len(xmlfilenames):
-        print("Warning: Working directory includes files with extension other than .xml")
+        print("Warning: Specified directory includes files with extension other than .xml")
         print("         or perhaps a file named simply '.xml'.")
+    
+    print("Will attempt to framify", len(filenames), "files...")
 
     # define namespace prefix for XML elements
     ns = {"pbcore": "http://www.pbcore.org/PBCore/PBCoreNamespace.html"}
@@ -531,7 +533,16 @@ def inframe( assttbl, insttbl ):
 
 def filterproj_main( asstdf ):
 
-    cols = ["asset_id", "sonyci_id", "media_type", "asset_type", "level_of_user_access", "broadcast_date", "created_date", "consolidated_title", "proxy_duration"]
+    cols = ["asset_id", 
+            "sonyci_id", 
+            "media_type", 
+            "asset_type", 
+            "level_of_user_access", 
+            "broadcast_date", 
+            "created_date",
+            "producing_organization", 
+            "consolidated_title", 
+            "proxy_duration"]
     return( asstdf[ cols ] ) 
 
 
@@ -561,24 +572,32 @@ def main():
 
     args = parser.parse_args() 
 
+    args_ok = True
+
     if args.pbcore_dir is not None:
         pbcore_dir = args.pbcore_dir
+        if not os.path.exists(pbcore_dir):
+            print("Error: Specified directory does not exist.  Run with -h for help.")
+            args_ok = False
     else:
         print("Error: No DIR supplied.  Run with -h for help.")
+        args_ok = False
     
     if args.batch_csv is not None:
         batch_csv = args.batch_csv
     else:
         print("Error: No OUTPUT supplied.  Run with -h for help.")
+        args_ok = False
 
-    assttbl, insttbl = tablify( pbcore_dir )
-    asstdf, instdf, joindf = inframe( assttbl, insttbl )
-    projected = filterproj_main( asstdf )
+    if args_ok:
+        assttbl, insttbl = tablify( pbcore_dir )
+        asstdf, instdf, joindf = inframe( assttbl, insttbl )
+        projected = filterproj_main( asstdf )
 
-    print("PBCore XML files framified.")
-    print("Will write CSV file:", batch_csv)
-    write_csv( projected, batch_csv )
-    print("Done.")
+        print("PBCore XML files framified.")
+        print("Will write CSV file:", batch_csv)
+        write_csv( projected, batch_csv )
+        print("Done.")
 
 
 
