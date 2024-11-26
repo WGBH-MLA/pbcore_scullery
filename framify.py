@@ -123,7 +123,7 @@ def tablify( pbcore_dir:str ):
         # Asset.organization
         att = "[@annotationType='organization']"
         e = root.find("pbcore:pbcoreAnnotation"+att,ns)
-        organization = get_el_text(e)
+        contributing_organization = get_el_text(e)
 
         # Asset.level_of_user_access
         att = "[@annotationType='Level of User Access']"
@@ -421,7 +421,7 @@ def tablify( pbcore_dir:str ):
                         sonyci_id,
                         media_type,
                         asset_type, 
-                        organization,
+                        contributing_organization,
                         level_of_user_access,
                         special_collections,
                         transcript_status,
@@ -485,7 +485,7 @@ def inframe( assttbl, insttbl ):
                 "sonyci_id",
                 "media_type",
                 "asset_type", 
-                "organization",
+                "contributing_organization",
                 "level_of_user_access",
                 "special_collections",
                 "transcript_status",
@@ -541,8 +541,8 @@ def filterproj_main( asstdf ):
             "broadcast_date", 
             "created_date",
             "producing_organization", 
-            "consolidated_title", 
-            "proxy_duration"]
+            "contributing_organization",
+            "consolidated_title"] 
     return( asstdf[ cols ] ) 
 
 
