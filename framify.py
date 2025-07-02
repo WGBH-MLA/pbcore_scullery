@@ -117,6 +117,20 @@ def tablify( pbcore_dir:str ):
             if (not sonyci_id and e.text):
                 sonyci_id = e.text.strip()
 
+        # Asset.local_identifer, Asset.pbs_nola_code, Asset.eidr_id, etc
+        other_id_1 = other_id_2 = other_id_3 = ""
+        es = root.findall("pbcore:pbcoreIdentifier",ns)
+        for e in es:
+            if e.attrib["source"] not in ["http://americanarchiveinventory.org", "Sony Ci"]:
+                other_id = e.attrib["source"] + ":" + get_el_text(e)
+                if not other_id_1:
+                    other_id_1 = other_id
+                elif not other_id_2:
+                    other_id_2 = other_id
+                elif not other_id_3:
+                    other_id_3 = other_id
+
+
         #
         # Annotation elements 
         #
@@ -419,6 +433,9 @@ def tablify( pbcore_dir:str ):
         assttbl.append([asset_id,
                         aapb_pbcore_id, 
                         sonyci_id,
+                        other_id_1,
+                        other_id_2,
+                        other_id_3,
                         media_type,
                         asset_type, 
                         contributing_organization,
@@ -483,6 +500,9 @@ def inframe( assttbl, insttbl ):
     asstcols = ["asset_id",
                 "aapb_pbcore_id", 
                 "sonyci_id",
+                "other_id_1",
+                "other_id_2",
+                "other_id_3",
                 "media_type",
                 "asset_type", 
                 "contributing_organization",
@@ -565,6 +585,8 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     
+    parser.add_argument("-a", "--allcols", action="store_true",
+        help="Include all inframed columns, not just default columns")
     parser.add_argument("pbcore_dir", metavar="DIR", nargs="?",
         help="Path to directory containing PBCore XML files")
     parser.add_argument("batch_csv", metavar="OUTPUT", nargs="?",
@@ -592,7 +614,11 @@ def main():
     if args_ok:
         assttbl, insttbl = tablify( pbcore_dir )
         asstdf, instdf, joindf = inframe( assttbl, insttbl )
-        projected = filterproj_main( asstdf )
+        
+        if args.allcols:
+            projected = asstdf
+        else:
+            projected = filterproj_main( asstdf )
 
         print("PBCore XML files framified.")
         print("Will write CSV file:", batch_csv)
