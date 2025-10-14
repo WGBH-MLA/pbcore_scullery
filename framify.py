@@ -270,8 +270,68 @@ def tablify( pbcore_dir:str ):
             if consolidated_title:
                 consolidated_title += (" " + title)
             else:
-                consolidated_title += title
+                consolidated_title = title
 
+        #
+        # Description elements 
+        #
+        # Asset.series_description
+        att = "[@descriptionType='Series']"
+        e = root.find("pbcore:pbcoreDescription"+att,ns)
+        series_description = get_el_text(e)
+
+        # Asset.program_description
+        att = "[@descriptionType='Program']"
+        e = root.find("pbcore:pbcoreDescription"+att,ns)
+        program_description = get_el_text(e)
+
+        # Asset.episode_description
+        att = "[@descriptionType='Episode']"
+        e = root.find("pbcore:pbcoreDescription"+att,ns)
+        episode_description = get_el_text(e)
+
+        # Asset.segment_description
+        att = "[@descriptionType='Segment']"
+        e = root.find("pbcore:pbcoreDescription"+att,ns)
+        segment_description = get_el_text(e)
+
+        # Asset.raw_footage_description
+        att = "[@descriptionType='Raw Footage']"
+        e = root.find("pbcore:pbcoreDescription"+att,ns)
+        raw_footage_description = get_el_text(e)
+
+        # Asset.promo_description
+        att = "[@descriptionType='Promo']"
+        e = root.find("pbcore:pbcoreDescription"+att,ns)
+        promo_description = get_el_text(e)
+
+        # Asset.clip_description
+        att = "[@descriptionType='Clip']"
+        e = root.find("pbcore:pbcoreDescription"+att,ns)
+        clip_description = get_el_text(e)
+
+        # Asset.description (no @descriptionType)
+        es = root.findall("pbcore:pbcoreDescription",ns)
+        esnoat = [e for e in es if 'descriptionType' not in e.attrib]
+        description = get_el_text(esnoat[0]) if len(esnoat) > 0 else ""
+
+        # Canonical description
+        # Build a single canonical description, given that there might be several
+        # descriptions associated with the asset
+        consolidated_description = ""
+        if series_description:
+            consolidated_description += (series_description + ": ")
+        consolidated_description += episode_description
+        consolidated_description += program_description
+        consolidated_description += segment_description
+        consolidated_description += raw_footage_description
+        consolidated_description += promo_description
+        consolidated_description += clip_description
+        if description:
+            if consolidated_description:
+                consolidated_description += (" " + description)
+            else:
+                consolidated_description = description
 
         #
         # Other elements 
@@ -459,6 +519,15 @@ def tablify( pbcore_dir:str ):
                         clip_title,
                         title,
                         consolidated_title,
+                        series_description,
+                        program_description,
+                        episode_description,
+                        segment_description,
+                        raw_footage_description,
+                        promo_description,
+                        clip_description,
+                        description,
+                        consolidated_description,
                         producing_organization,
                         proxy_duration
                         ])
@@ -526,6 +595,15 @@ def inframe( assttbl, insttbl ):
                 "clip_title",
                 "title",
                 "consolidated_title",
+                "series_description",
+                "program_description",
+                "episode_description",
+                "segment_description",
+                "raw_footage_description",
+                "promo_description",
+                "clip_description",
+                "description",
+                "consolidated_description",
                 "producing_organization",
                 "proxy_duration"]
 
