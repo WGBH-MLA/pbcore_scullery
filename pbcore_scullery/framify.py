@@ -658,8 +658,8 @@ def write_csv( df, csv_filename: str ):
 def main():
     
     parser = parser = argparse.ArgumentParser(
-        prog='framify.py',
-        description='routines for working with AAPB PBcore in Pandas Dataframes',
+        prog='framify',
+        description='Fit PBCore XML data into a tabular structure and export as CSV',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     

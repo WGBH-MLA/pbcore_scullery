@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pbcore-scullery"
+version = "0.50" 
+description = "Utilities for analyzing PBCore XML data by fitting it in a tabular structure" 
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+dependencies = [
+    "pandas>=2.2.2"
+]
+
+# If there are any scripts, they would go here.
+# For now, I'll omit this section as framify.py is not yet a CLI entry point.
+[project.scripts]
+framify = "pbcore_scullery.framify:main"
+
+[project.urls]
+"Homepage" = "https://github.com/WGBH-MLA/pbcore_scullery" 
+"Source" = "https://github.com/WGBH-MLA/pbcore_scullery" 
