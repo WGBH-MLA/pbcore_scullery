@@ -32,10 +32,10 @@ def get_el_text( e ):
 
 ############################################################################
 # %%
-# Define tablify function
-def tablify( pbcore_dir:str ):
+# Define tablify_dir function
+def get_filepaths( pbcore_dir:str ):
     """
-    Build tables of assets and instantiations (as Python lists of lists)
+    Return a list of filepaths to XML docs in a dir. 
     """
 
     print("Using directory:", pbcore_dir)
@@ -45,13 +45,20 @@ def tablify( pbcore_dir:str ):
         raise Exception("Invalid directory path for PBCore files.")
 
     filenames = os.listdir(pbcore_dir)
-    xmlfilenames = glob.glob(pbcore_dir + "/*.xml")
+    xmlfilepaths = glob.glob(pbcore_dir + "/*.xml")
 
-    if len(filenames) > len(xmlfilenames):
+    if len(filenames) > len(xmlfilepaths):
         print("Warning: Specified directory includes files with extension other than .xml")
         print("         or perhaps a file named simply '.xml'.")
     
-    print("Will attempt to framify", len(filenames), "files...")
+    return xmlfilepaths
+
+
+def tablify( xmlfilepaths:list ):
+    """
+    Takes a list of filepaths of PBCore XML docs.
+    Builds tables of assets and instantiations (as Python lists of lists)
+    """
 
     # define namespace prefix for XML elements
     ns = {"pbcore": "http://www.pbcore.org/PBCore/PBCoreNamespace.html"}
@@ -67,20 +74,17 @@ def tablify( pbcore_dir:str ):
     mismatch_dig_media_types_guids = {}
     #### CAT-AUD ##############################################
 
-    # For each XML file, 
+    # For each XML file tree 
     #   - add a row to the asset table
     #   - add zero or more rows to the instantiations table
-    for fn in filenames:
-
-        # read XML file (making sure we can parse it)
-        fpath = pbcore_dir + "/" + fn
+    for fp in xmlfilepaths:
 
         try:
-            tree = ET.parse(fpath)
+            tree = ET.parse(fp)
         except ET.ParseError as e:
-            print(f"Error in XML parsing for file {fn}: {e}")
+            print(f"Error in XML parsing for file {fp}: {e}")
         except Exception as e:
-            print(f"An error occurred with file {fn}: {e}")
+            print(f"An error occurred with file {fp}: {e}")
 
         # Get the root element of the XML tree
         # This should be a `pbcoreDescriptionDocument`.
@@ -690,7 +694,8 @@ def main():
         args_ok = False
 
     if args_ok:
-        assttbl, insttbl = tablify( pbcore_dir )
+        xmlfilepaths = get_filepaths( pbcore_dir )
+        assttbl, insttbl = tablify( xmlfilepaths )
         asstdf, instdf, joindf = inframe( assttbl, insttbl )
         
         if args.allcols:
