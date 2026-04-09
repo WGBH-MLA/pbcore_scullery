@@ -57,7 +57,7 @@ def get_filepaths( pbcore_dir:str ):
 def tablify( xmlfilepaths:list ):
     """
     Takes a list of filepaths of PBCore XML docs.
-    Builds tables of assets and instantiations (as Python lists of lists)
+    Builds tables of assets and instantiations (as Python lists of dictionaries)
     """
 
     # define namespace prefix for XML elements
@@ -481,60 +481,62 @@ def tablify( xmlfilepaths:list ):
             e = inst.find("pbcore:instantiationLocation"+att,ns)
             inst_location = get_el_text(e)
 
-            # Add the collected instantiation-level values to the table
-            insttbl.append([asset_id,
-                            inst_identifiers,
-                            inst_media_type,
-                            inst_digital_format,
-                            inst_physical_format,
-                            inst_generations,
-                            inst_duration,
-                            inst_location
-                            ])
+                # Add the collected instantiation-level values to the table
+            insttbl.append({
+                "asset_id": asset_id,
+                "inst_identifiers": inst_identifiers,
+                "inst_media_type": inst_media_type,
+                "inst_digital_format": inst_digital_format,
+                "inst_physical_format": inst_physical_format,
+                "inst_generations": inst_generations,
+                "inst_duration": inst_duration,
+                "inst_location": inst_location
+            })
 
 
         # Add the collected asset-level values to the table
-        assttbl.append([asset_id,
-                        aapb_pbcore_id, 
-                        sonyci_id,
-                        other_id_1,
-                        other_id_2,
-                        other_id_3,
-                        media_type,
-                        asset_type, 
-                        contributing_organization,
-                        level_of_user_access,
-                        special_collections,
-                        transcript_status,
-                        transcript_url,
-                        proxy_start_time,
-                        broadcast_date,
-                        created_date,
-                        copyright_date,
-                        date,
-                        single_date,
-                        series_title,
-                        program_title,
-                        episode_title,
-                        episode_number,
-                        segment_title,
-                        raw_footage_title,
-                        promo_title,
-                        clip_title,
-                        title,
-                        consolidated_title,
-                        series_description,
-                        program_description,
-                        episode_description,
-                        segment_description,
-                        raw_footage_description,
-                        promo_description,
-                        clip_description,
-                        description,
-                        consolidated_description,
-                        producing_organization,
-                        proxy_duration
-                        ])
+        assttbl.append({
+            "asset_id": asset_id,
+            "aapb_pbcore_id": aapb_pbcore_id, 
+            "sonyci_id": sonyci_id,
+            "other_id_1": other_id_1,
+            "other_id_2": other_id_2,
+            "other_id_3": other_id_3,
+            "media_type": media_type,
+            "asset_type": asset_type, 
+            "contributing_organization": contributing_organization,
+            "level_of_user_access": level_of_user_access,
+            "special_collections": special_collections,
+            "transcript_status": transcript_status,
+            "transcript_url": transcript_url,
+            "proxy_start_time": proxy_start_time,
+            "broadcast_date": broadcast_date,
+            "created_date": created_date,
+            "copyright_date": copyright_date,
+            "date": date,
+            "single_date": single_date,
+            "series_title": series_title,
+            "program_title": program_title,
+            "episode_title": episode_title,
+            "episode_number": episode_number,
+            "segment_title": segment_title,
+            "raw_footage_title": raw_footage_title,
+            "promo_title": promo_title,
+            "clip_title": clip_title,
+            "title": title,
+            "consolidated_title": consolidated_title,
+            "series_description": series_description,
+            "program_description": program_description,
+            "episode_description": episode_description,
+            "segment_description": segment_description,
+            "raw_footage_description": raw_footage_description,
+            "promo_description": promo_description,
+            "clip_description": clip_description,
+            "description": description,
+            "consolidated_description": consolidated_description,
+            "producing_organization": producing_organization,
+            "proxy_duration": proxy_duration
+        })
 
 
         #### CAT-AUD ##############################################
@@ -570,59 +572,9 @@ def inframe( assttbl, insttbl ):
     Create dataframes from tables
     """
 
-    asstcols = ["asset_id",
-                "aapb_pbcore_id", 
-                "sonyci_id",
-                "other_id_1",
-                "other_id_2",
-                "other_id_3",
-                "media_type",
-                "asset_type", 
-                "contributing_organization",
-                "level_of_user_access",
-                "special_collections",
-                "transcript_status",
-                "transcript_url",
-                "proxy_start_time",
-                "broadcast_date",
-                "created_date",
-                "copyright_date",
-                "date",
-                "single_date",
-                "series_title",
-                "program_title",
-                "episode_title",
-                "episode_number",
-                "segment_title",
-                "raw_footage_title",
-                "promo_title",
-                "clip_title",
-                "title",
-                "consolidated_title",
-                "series_description",
-                "program_description",
-                "episode_description",
-                "segment_description",
-                "raw_footage_description",
-                "promo_description",
-                "clip_description",
-                "description",
-                "consolidated_description",
-                "producing_organization",
-                "proxy_duration"]
+    asstdf = pd.DataFrame(assttbl)
 
-    instcols = ["asset_id",
-                "inst_identifiers",
-                "inst_media_type",
-                "inst_digital_format",
-                "inst_physical_format",
-                "inst_generations",
-                "inst_duration",
-                "inst_location"]
-
-    asstdf = pd.DataFrame(assttbl, columns=asstcols)
-
-    instdf = pd.DataFrame(insttbl, columns=instcols)
+    instdf = pd.DataFrame(insttbl)
 
     joindf = pd.merge(asstdf,instdf, how="left")
 
