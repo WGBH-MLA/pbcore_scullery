@@ -51,6 +51,8 @@ def get_filepaths( pbcore_dir:str ):
         print("Warning: Specified directory includes files with extension other than .xml")
         print("         or perhaps a file named simply '.xml'.")
     
+    print(f"Found:    {len(xmlfilepaths)} XML files.")
+
     return xmlfilepaths
 
 
@@ -655,7 +657,7 @@ def main():
         else:
             projected = filterproj_main( asstdf )
 
-        print("PBCore XML files framified.")
+        print(f"Framfied: {len(projected)} PBCore documents.")
         print("Will write CSV file:", batch_csv)
         write_csv( projected, batch_csv )
         print("Done.")
