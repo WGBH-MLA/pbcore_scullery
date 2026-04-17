@@ -56,14 +56,16 @@ def get_filepaths( pbcore_dir:str ):
     return xmlfilepaths
 
 
-def tablify( xmlfilepaths:list ):
+def tablify( xmlfilepaths:list ) -> (list, list):
     """
     Takes a list of filepaths of PBCore XML docs.
-    Builds tables of assets and instantiations (as Python lists of dictionaries)
-    """
 
-    # define namespace prefix for XML elements
-    ns = {"pbcore": "http://www.pbcore.org/PBCore/PBCoreNamespace.html"}
+    Builds tables of assets and instantiations (as Python lists of dictionaries)
+
+    Returns a pair of lists:
+      * `assttbl` - a list of asset-level dictionaries
+      * `insttbl` - a list of instantiation-level dictionaries
+    """
 
     # The initial catalog tables
     assttbl = []
@@ -79,492 +81,502 @@ def tablify( xmlfilepaths:list ):
     # For each XML file tree 
     #   - add a row to the asset table
     #   - add zero or more rows to the instantiations table
-    for fp in xmlfilepaths:
+    for xmlfilepath in xmlfilepaths:
 
-        try:
-            tree = ET.parse(fp)
-        except ET.ParseError as e:
-            print(f"Error in XML parsing for file {fp}: {e}")
-        except Exception as e:
-            print(f"An error occurred with file {fp}: {e}")
+        asstdict, asst_insttbl = dictify(xmlfilepath)
 
-        # Get the root element of the XML tree
-        # This should be a `pbcoreDescriptionDocument`.
+        if asstdict:
+            assttbl.append(asstdict)
+            insttbl += asst_insttbl
+
+    return ( assttbl, insttbl )
+
+
+def dictify( xmlfilepath:str ) -> (dict, list):
+    """
+    Main function for turning a PBCore XML document into a Pythonic data
+    structures.
+
+    Takes a filepath to a PBCore XML file.
+
+    Returns a dictionary and a list of dinctiories:
+      * `asstdict` - an asset-level dictionary
+      * `insttbl`  - a list of an instantiation-level dictionaries
+    """
+
+    # define namespace prefix for XML elements
+    ns = {"pbcore": "http://www.pbcore.org/PBCore/PBCoreNamespace.html"}
+
+    bad_tree = False
+
+    try:
+        tree = ET.parse(xmlfilepath)
+    except ET.ParseError as e:
+        print(f"Error in XML parsing for file {xmlfilepath}: {e}")
+        bad_tree = True
+    except Exception as e:
+        print(f"An error occurred with file {xmlfilepath}: {e}")
+        bad_tree = True
+
+    # Get the root element of the XML tree
+    # This should be a `pbcoreDescriptionDocument`.
+
+    if not bad_tree:
         root = tree.getroot()
 
         root_tag = root.tag
         root_tag_no_ns = root_tag.split('}')[-1] if '}' in root_tag else root_tag
         if root_tag_no_ns != "pbcoreDescriptionDocument":
-            print("Warning: The root element is:", root_tag_no_ns)
-            print("Skipping", fn)
-            continue
-         
+            print("Error: The root element is:", root_tag_no_ns)
+            
+    if bad_tree:
+        print("Skipping dictification for invalid PBCore XML file at", xmlfilepath)
+        return (None, None)
+        
 
-        # get all the values we want
-        # (If an element is missing, assign empty string to the variable)
+    # get all the values we want
+    # (If an element is missing, assign empty string to the variable)
 
-        #
-        # Identifier elements 
-        #
-        # Asset.id
-        # The raw text from the PBCore is stored as the `aapb_pbcore_id`
-        # The normalized "guid" (without / or _) is stored as `asset_id`
-        att = "[@source='http://americanarchiveinventory.org']"
-        e = root.find("pbcore:pbcoreIdentifier"+att,ns)
-        aapb_pbcore_id = get_el_text(e)
-        asset_id = aapb_pbcore_id.replace('/', '-').replace('_', '-')
+    #
+    # Identifier elements 
+    #
+    # Asset.id
+    # The raw text from the PBCore is stored as the `aapb_pbcore_id`
+    # The normalized "guid" (without / or _) is stored as `asset_id`
+    att = "[@source='http://americanarchiveinventory.org']"
+    e = root.find("pbcore:pbcoreIdentifier"+att,ns)
+    aapb_pbcore_id = get_el_text(e)
+    asset_id = aapb_pbcore_id.replace('/', '-').replace('_', '-')
 
-        # Asset.sonyci_id
-        # Takes the Sony Ci ID from the first non-empty matching element
-        att = "[@source='Sony Ci']"
-        es = root.findall("pbcore:pbcoreIdentifier"+att,ns)
-        sonyci_id = ""
-        for e in es:
-            if (not sonyci_id and e.text):
-                sonyci_id = e.text.strip()
+    # Asset.sonyci_id
+    # Takes the Sony Ci ID from the first non-empty matching element
+    att = "[@source='Sony Ci']"
+    es = root.findall("pbcore:pbcoreIdentifier"+att,ns)
+    sonyci_id = ""
+    for e in es:
+        if (not sonyci_id and e.text):
+            sonyci_id = e.text.strip()
 
-        # Asset.local_identifer, Asset.pbs_nola_code, Asset.eidr_id, etc
-        other_id_1 = other_id_2 = other_id_3 = ""
-        es = root.findall("pbcore:pbcoreIdentifier",ns)
-        for e in es:
-            if e.attrib["source"] not in ["http://americanarchiveinventory.org", "Sony Ci"]:
-                other_id = e.attrib["source"] + ":" + get_el_text(e)
-                if not other_id_1:
-                    other_id_1 = other_id
-                elif not other_id_2:
-                    other_id_2 = other_id
-                elif not other_id_3:
-                    other_id_3 = other_id
+    # Asset.local_identifer, Asset.pbs_nola_code, Asset.eidr_id, etc
+    other_id_1 = other_id_2 = other_id_3 = ""
+    es = root.findall("pbcore:pbcoreIdentifier",ns)
+    for e in es:
+        if e.attrib["source"] not in ["http://americanarchiveinventory.org", "Sony Ci"]:
+            other_id = e.attrib["source"] + ":" + get_el_text(e)
+            if not other_id_1:
+                other_id_1 = other_id
+            elif not other_id_2:
+                other_id_2 = other_id
+            elif not other_id_3:
+                other_id_3 = other_id
 
 
-        #
-        # Annotation elements 
-        #
-        # Asset.organization
-        att = "[@annotationType='organization']"
-        e = root.find("pbcore:pbcoreAnnotation"+att,ns)
-        contributing_organization = get_el_text(e)
+    #
+    # Annotation elements 
+    #
+    # Asset.organization
+    att = "[@annotationType='organization']"
+    e = root.find("pbcore:pbcoreAnnotation"+att,ns)
+    contributing_organization = get_el_text(e)
 
-        # Asset.level_of_user_access
-        att = "[@annotationType='Level of User Access']"
-        e = root.find("pbcore:pbcoreAnnotation"+att,ns)
-        level_of_user_access = get_el_text(e)
+    # Asset.level_of_user_access
+    att = "[@annotationType='Level of User Access']"
+    e = root.find("pbcore:pbcoreAnnotation"+att,ns)
+    level_of_user_access = get_el_text(e)
 
-        # Asset.special_collections
-        # handling multiple values
-        att = "[@annotationType='special_collections']"
-        es = root.findall("pbcore:pbcoreAnnotation"+att,ns)
-        tlist = [ get_el_text(e) for e in es ]
-        special_collections = ','.join(tlist)
+    # Asset.special_collections
+    # handling multiple values
+    att = "[@annotationType='special_collections']"
+    es = root.findall("pbcore:pbcoreAnnotation"+att,ns)
+    tlist = [ get_el_text(e) for e in es ]
+    special_collections = ','.join(tlist)
 
-        # Asset.transcript_status
-        att = "[@annotationType='Transcript Status']"
-        e = root.find("pbcore:pbcoreAnnotation"+att,ns)
-        transcript_status = get_el_text(e)
+    # Asset.transcript_status
+    att = "[@annotationType='Transcript Status']"
+    e = root.find("pbcore:pbcoreAnnotation"+att,ns)
+    transcript_status = get_el_text(e)
 
-        # Asset.transcript_url
-        att = "[@annotationType='Transcript URL']"
-        e = root.find("pbcore:pbcoreAnnotation"+att,ns)
-        transcript_url = get_el_text(e)
+    # Asset.transcript_url
+    att = "[@annotationType='Transcript URL']"
+    e = root.find("pbcore:pbcoreAnnotation"+att,ns)
+    transcript_url = get_el_text(e)
 
-        # Proxy Start Time
-        att = "[@annotationType='Proxy Start Time']"
-        e = root.find("pbcore:pbcoreAnnotation"+att,ns)
-        proxy_start_time = get_el_text(e)
+    # Proxy Start Time
+    att = "[@annotationType='Proxy Start Time']"
+    e = root.find("pbcore:pbcoreAnnotation"+att,ns)
+    proxy_start_time = get_el_text(e)
 
-        #
-        # Date elements 
-        #
-        # Asset.broadcast_date
-        att = "[@dateType='Broadcast']"
-        e = root.find("pbcore:pbcoreAssetDate"+att,ns)
-        broadcast_date = get_el_text(e)
+    #
+    # Date elements 
+    #
+    # Asset.broadcast_date
+    att = "[@dateType='Broadcast']"
+    e = root.find("pbcore:pbcoreAssetDate"+att,ns)
+    broadcast_date = get_el_text(e)
 
-        # Asset.created_date
-        att = "[@dateType='Created']"
-        e = root.find("pbcore:pbcoreAssetDate"+att,ns)
-        created_date = get_el_text(e)
+    # Asset.created_date
+    att = "[@dateType='Created']"
+    e = root.find("pbcore:pbcoreAssetDate"+att,ns)
+    created_date = get_el_text(e)
 
-        # Asset.copyright_date
-        att = "[@dateType='Copyright']"
-        e = root.find("pbcore:pbcoreAssetDate"+att,ns)
-        copyright_date = get_el_text(e)
+    # Asset.copyright_date
+    att = "[@dateType='Copyright']"
+    e = root.find("pbcore:pbcoreAssetDate"+att,ns)
+    copyright_date = get_el_text(e)
 
-        # Asset.date (no @dateType)
-        es = root.findall("pbcore:pbcoreAssetDate",ns)
-        esnoat = [e for e in es if 'dateType' not in e.attrib]  
-        date = get_el_text(esnoat[0]) if len(esnoat) > 0 else ""
+    # Asset.date (no @dateType)
+    es = root.findall("pbcore:pbcoreAssetDate",ns)
+    esnoat = [e for e in es if 'dateType' not in e.attrib]  
+    date = get_el_text(esnoat[0]) if len(esnoat) > 0 else ""
 
-        # Canonical date
-        # Use a simple heuristic to set a single canonical date, given that 
-        # there might be several dates associated with the asset
-        if date:
-            single_date = date
-        elif copyright_date:
-            single_date = copyright_date
-        elif created_date:
-            single_date = created_date
-        elif broadcast_date:
-            single_date = broadcast_date
+    # Canonical date
+    # Use a simple heuristic to set a single canonical date, given that 
+    # there might be several dates associated with the asset
+    if date:
+        single_date = date
+    elif copyright_date:
+        single_date = copyright_date
+    elif created_date:
+        single_date = created_date
+    elif broadcast_date:
+        single_date = broadcast_date
+    else:
+        single_date = ""
+
+
+    #
+    # Title elements 
+    #
+    # Asset.series_title
+    att = "[@titleType='Series']"
+    e = root.find("pbcore:pbcoreTitle"+att,ns)
+    series_title = get_el_text(e)
+
+    # Asset.program_title
+    att = "[@titleType='Program']"
+    e = root.find("pbcore:pbcoreTitle"+att,ns)
+    program_title = get_el_text(e)
+
+    # Asset.episode_title
+    att = "[@titleType='Episode']"
+    e = root.find("pbcore:pbcoreTitle"+att,ns)
+    episode_title = get_el_text(e)
+
+    # Asset.episode_number
+    att = "[@titleType='Episode Number']"
+    e = root.find("pbcore:pbcoreTitle"+att,ns)
+    episode_number = get_el_text(e)
+
+    # Asset.segment_title
+    att = "[@titleType='Segment']"
+    e = root.find("pbcore:pbcoreTitle"+att,ns)
+    segment_title = get_el_text(e)
+
+    # Asset.raw_footage_title
+    att = "[@titleType='Raw Footage']"
+    e = root.find("pbcore:pbcoreTitle"+att,ns)
+    raw_footage_title = get_el_text(e)
+
+    # Asset.promo_title
+    att = "[@titleType='Promo']"
+    e = root.find("pbcore:pbcoreTitle"+att,ns)
+    promo_title = get_el_text(e)
+
+    # Asset.clip_title
+    att = "[@titleType='Clip']"
+    e = root.find("pbcore:pbcoreTitle"+att,ns)
+    clip_title = get_el_text(e)
+
+    # Asset.title (no @titleType)
+    es = root.findall("pbcore:pbcoreTitle",ns)
+    esnoat = [e for e in es if 'titleType' not in e.attrib]
+    title = get_el_text(esnoat[0]) if len(esnoat) > 0 else ""
+
+    # Canonical title
+    # Build a single canonical title, given that there might be several
+    # titles associated with the asset
+    consolidated_title = ""
+    if series_title:
+        consolidated_title += (series_title + ": ")
+    if episode_number:
+        consolidated_title += ("No. " + episode_number + ": ")
+    consolidated_title += episode_title
+    consolidated_title += program_title
+    consolidated_title += segment_title
+    consolidated_title += raw_footage_title
+    consolidated_title += promo_title
+    consolidated_title += clip_title
+    if title:
+        if consolidated_title:
+            consolidated_title += (" " + title)
         else:
-            single_date = ""
+            consolidated_title = title
+
+    #
+    # Description elements 
+    #
+    # Asset.series_description
+    att = "[@descriptionType='Series']"
+    e = root.find("pbcore:pbcoreDescription"+att,ns)
+    series_description = get_el_text(e)
+
+    # Asset.program_description
+    att = "[@descriptionType='Program']"
+    e = root.find("pbcore:pbcoreDescription"+att,ns)
+    program_description = get_el_text(e)
+
+    # Asset.episode_description
+    att = "[@descriptionType='Episode']"
+    e = root.find("pbcore:pbcoreDescription"+att,ns)
+    episode_description = get_el_text(e)
+
+    # Asset.segment_description
+    att = "[@descriptionType='Segment']"
+    e = root.find("pbcore:pbcoreDescription"+att,ns)
+    segment_description = get_el_text(e)
+
+    # Asset.raw_footage_description
+    att = "[@descriptionType='Raw Footage']"
+    e = root.find("pbcore:pbcoreDescription"+att,ns)
+    raw_footage_description = get_el_text(e)
+
+    # Asset.promo_description
+    att = "[@descriptionType='Promo']"
+    e = root.find("pbcore:pbcoreDescription"+att,ns)
+    promo_description = get_el_text(e)
+
+    # Asset.clip_description
+    att = "[@descriptionType='Clip']"
+    e = root.find("pbcore:pbcoreDescription"+att,ns)
+    clip_description = get_el_text(e)
+
+    # Asset.description (no @descriptionType)
+    es = root.findall("pbcore:pbcoreDescription",ns)
+    esnoat = [e for e in es if 'descriptionType' not in e.attrib]
+    description = get_el_text(esnoat[0]) if len(esnoat) > 0 else ""
+
+    # Canonical description
+    # Build a single canonical description, given that there might be several
+    # descriptions associated with the asset
+    consolidated_description = ""
+    if series_description:
+        consolidated_description += (series_description + ": ")
+    consolidated_description += episode_description
+    consolidated_description += program_description
+    consolidated_description += segment_description
+    consolidated_description += raw_footage_description
+    consolidated_description += promo_description
+    consolidated_description += clip_description
+    if description:
+        if consolidated_description:
+            consolidated_description += (" " + description)
+        else:
+            consolidated_description = description
+
+    #
+    # Other elements 
+    #
+    # Asset.asset_types
+    att = ""
+    e = root.find("pbcore:pbcoreAssetType"+att,ns)
+    asset_type = get_el_text(e)
 
 
-        #
-        # Title elements 
-        #
-        # Asset.series_title
-        att = "[@titleType='Series']"
-        e = root.find("pbcore:pbcoreTitle"+att,ns)
-        series_title = get_el_text(e)
+    #
+    # Creator and contributor elements
+    #
 
-        # Asset.program_title
-        att = "[@titleType='Program']"
-        e = root.find("pbcore:pbcoreTitle"+att,ns)
-        program_title = get_el_text(e)
+    # Asset.producing_organization
+    pbcreators = root.findall("pbcore:pbcoreCreator",ns)
+    crole_e = None    
+    creator_e = None
+    producing_organization = ""
+    for pbcreator_e in pbcreators:
+        crole_e = pbcreator_e.find("pbcore:creatorRole",ns)
+        crole = get_el_text(crole_e)
+        creator_e = pbcreator_e.find("pbcore:creator",ns)
+        creator = get_el_text(creator_e)
+        #print("Creator role:", crole, "Creator:", creator)
+        if crole == "Producing Organization":
+            producing_organization = creator
 
-        # Asset.episode_title
-        att = "[@titleType='Episode']"
-        e = root.find("pbcore:pbcoreTitle"+att,ns)
-        episode_title = get_el_text(e)
 
-        # Asset.episode_number
-        att = "[@titleType='Episode Number']"
-        e = root.find("pbcore:pbcoreTitle"+att,ns)
-        episode_number = get_el_text(e)
+    # DigitalInstantiation.media_type for the asset
+    # (Note: This is not an element that is part of the asset records, but
+    #  we need to associate a media type with the asset; so we make an 
+    #  intelligent choice among the media types in the instantiation records.)
+    insts = root.findall(".//pbcore:pbcoreInstantiation",ns)
+    dig_mts = []  # create list of media types for digial instantiations
+    phs_mts = []  # create list of media types for physical instantiations
+    for inst in insts:
+        mte = inst.find("pbcore:instantiationMediaType",ns)
+        if mte is not None:
+            if inst.find("pbcore:instantiationDigital",ns) is not None:
+                dig_mts.append(get_el_text(mte))
+            elif inst.find("pbcore:instantiationPhysical",ns) is not None:
+                phs_mts.append(get_el_text(mte))
+    if 'Moving Image' in dig_mts:
+        media_type = 'Moving Image'
+    elif 'Sound' in dig_mts:
+        media_type = 'Sound'
+    elif 'Moving Image' in phs_mts:
+        media_type = 'Moving Image'
+    elif 'Sound' in phs_mts:
+        media_type = 'Sound'
+    elif len(dig_mts) > 0:
+        media_type = dig_mts[0]
+    elif len(phs_mts) > 0:
+        media_type = phs_mts[0]
+    else:
+        media_type = ''
 
-        # Asset.segment_title
-        att = "[@titleType='Segment']"
-        e = root.find("pbcore:pbcoreTitle"+att,ns)
-        segment_title = get_el_text(e)
+    # Proxy duration 
+    # (Note: This is not an element that is part of the asset records, but it
+    #  is useful to infer this where possible.)
+    # Take the duration of the first digital instatniation where the generation 
+    # equals "Proxy"
+    proxy_duration = ""
+    insts = root.findall(".//pbcore:pbcoreInstantiation",ns)
+    for inst in insts:
+        if inst.find("pbcore:instantiationDigital",ns) is not None:
+            e = inst.find("pbcore:instantiationGenerations",ns)
+            if (not proxy_duration) and e is not None:
+                if ( get_el_text(e) == "Proxy" ):
+                    e = inst.find("pbcore:instantiationDuration",ns)
+                    if e is not None:
+                        proxy_duration = get_el_text(e)
 
-        # Asset.raw_footage_title
-        att = "[@titleType='Raw Footage']"
-        e = root.find("pbcore:pbcoreTitle"+att,ns)
-        raw_footage_title = get_el_text(e)
 
-        # Asset.promo_title
-        att = "[@titleType='Promo']"
-        e = root.find("pbcore:pbcoreTitle"+att,ns)
-        promo_title = get_el_text(e)
+    # Instantiation records
+    insttbl = []
+    insts = root.findall(".//pbcore:pbcoreInstantiation",ns)
+    for inst in insts:
 
-        # Asset.clip_title
-        att = "[@titleType='Clip']"
-        e = root.find("pbcore:pbcoreTitle"+att,ns)
-        clip_title = get_el_text(e)
-
-        # Asset.title (no @titleType)
-        es = root.findall("pbcore:pbcoreTitle",ns)
-        esnoat = [e for e in es if 'titleType' not in e.attrib]
-        title = get_el_text(esnoat[0]) if len(esnoat) > 0 else ""
-
-        # Canonical title
-        # Build a single canonical title, given that there might be several
-        # titles associated with the asset
-        consolidated_title = ""
-        if series_title:
-            consolidated_title += (series_title + ": ")
-        if episode_number:
-            consolidated_title += ("No. " + episode_number + ": ")
-        consolidated_title += episode_title
-        consolidated_title += program_title
-        consolidated_title += segment_title
-        consolidated_title += raw_footage_title
-        consolidated_title += promo_title
-        consolidated_title += clip_title
-        if title:
-            if consolidated_title:
-                consolidated_title += (" " + title)
-            else:
-                consolidated_title = title
-
-        #
-        # Description elements 
-        #
-        # Asset.series_description
-        att = "[@descriptionType='Series']"
-        e = root.find("pbcore:pbcoreDescription"+att,ns)
-        series_description = get_el_text(e)
-
-        # Asset.program_description
-        att = "[@descriptionType='Program']"
-        e = root.find("pbcore:pbcoreDescription"+att,ns)
-        program_description = get_el_text(e)
-
-        # Asset.episode_description
-        att = "[@descriptionType='Episode']"
-        e = root.find("pbcore:pbcoreDescription"+att,ns)
-        episode_description = get_el_text(e)
-
-        # Asset.segment_description
-        att = "[@descriptionType='Segment']"
-        e = root.find("pbcore:pbcoreDescription"+att,ns)
-        segment_description = get_el_text(e)
-
-        # Asset.raw_footage_description
-        att = "[@descriptionType='Raw Footage']"
-        e = root.find("pbcore:pbcoreDescription"+att,ns)
-        raw_footage_description = get_el_text(e)
-
-        # Asset.promo_description
-        att = "[@descriptionType='Promo']"
-        e = root.find("pbcore:pbcoreDescription"+att,ns)
-        promo_description = get_el_text(e)
-
-        # Asset.clip_description
-        att = "[@descriptionType='Clip']"
-        e = root.find("pbcore:pbcoreDescription"+att,ns)
-        clip_description = get_el_text(e)
-
-        # Asset.description (no @descriptionType)
-        es = root.findall("pbcore:pbcoreDescription",ns)
-        esnoat = [e for e in es if 'descriptionType' not in e.attrib]
-        description = get_el_text(esnoat[0]) if len(esnoat) > 0 else ""
-
-        # Canonical description
-        # Build a single canonical description, given that there might be several
-        # descriptions associated with the asset
-        consolidated_description = ""
-        if series_description:
-            consolidated_description += (series_description + ": ")
-        consolidated_description += episode_description
-        consolidated_description += program_description
-        consolidated_description += segment_description
-        consolidated_description += raw_footage_description
-        consolidated_description += promo_description
-        consolidated_description += clip_description
-        if description:
-            if consolidated_description:
-                consolidated_description += (" " + description)
-            else:
-                consolidated_description = description
-
-        #
-        # Other elements 
-        #
-        # Asset.asset_types
+        # Instantiation identifers
+        # handling multiple values by concatenating all of them into a |-separated list
         att = ""
-        e = root.find("pbcore:pbcoreAssetType"+att,ns)
-        asset_type = get_el_text(e)
+        es = inst.findall("pbcore:instantiationIdentifier",ns)
+        tlist = [ get_el_text(e) for e in es ]
+        inst_identifiers = '|'.join(tlist)
 
+        # Instantiation media type
+        att = ""
+        e = inst.find("pbcore:instantiationMediaType"+att,ns)
+        inst_media_type = get_el_text(e)
 
-        #
-        # Creator and contributor elements
-        #
+        # Instantiation date
+        att = ""
+        e = inst.find("pbcore:instantiationDate"+att,ns)
+        inst_date = get_el_text(e)
 
-        # Asset.producing_organization
-        pbcreators = root.findall("pbcore:pbcoreCreator",ns)
-        crole_e = None    
-        creator_e = None
-        producing_organization = ""
-        for pbcreator_e in pbcreators:
-            crole_e = pbcreator_e.find("pbcore:creatorRole",ns)
-            crole = get_el_text(crole_e)
-            creator_e = pbcreator_e.find("pbcore:creator",ns)
-            creator = get_el_text(creator_e)
-            #print("Creator role:", crole, "Creator:", creator)
-            if crole == "Producing Organization":
-                producing_organization = creator
+        # Instantiation digital format
+        att = ""
+        e = inst.find("pbcore:instantiationDigital"+att,ns)
+        inst_digital_format = get_el_text(e)
 
+        # Instantiation physical format
+        att = ""
+        e = inst.find("pbcore:instantiationPhysical"+att,ns)
+        inst_physical_format = get_el_text(e)
 
-        """
-        # DigitalInstantiation.media_type for the asset
-        # (Note: This is not an element that is part of the asset records, but
-        #  we need to associate a media type with the asset; so we make an 
-        #  intelligent choice among the media types in the instantiation records.)
-        # First, narrow down to the digital instantiations
-        # Then, if there are serveral, prioritize video, then audio
-        insts = root.findall(".//pbcore:pbcoreInstantiation",ns)
-        dig_mts = []  # create list of media types for digial instantiations
-        for inst in insts:
-            if inst.find("pbcore:instantiationDigital",ns) is not None:
-                mte = inst.find("pbcore:instantiationMediaType",ns)
-                if mte is not None:
-                    dig_mts.append(mte.text)
-        if len(dig_mts) == 0:
-            media_type = ''
-        elif 'Moving Image' in dig_mts:
-            media_type = 'Moving Image'
-        elif 'Sound' in dig_mts:
-            media_type = 'Sound'
-        else:
-            media_type = dig_mts[0]
-        """
+        # Instantiation generations
+        att = ""
+        e = inst.find("pbcore:instantiationGenerations"+att,ns)
+        inst_generations = get_el_text(e)
 
-        # DigitalInstantiation.media_type for the asset
-        # (Note: This is not an element that is part of the asset records, but
-        #  we need to associate a media type with the asset; so we make an 
-        #  intelligent choice among the media types in the instantiation records.)
-        insts = root.findall(".//pbcore:pbcoreInstantiation",ns)
-        dig_mts = []  # create list of media types for digial instantiations
-        phs_mts = []  # create list of media types for physical instantiations
-        for inst in insts:
-            mte = inst.find("pbcore:instantiationMediaType",ns)
-            if mte is not None:
-                if inst.find("pbcore:instantiationDigital",ns) is not None:
-                    dig_mts.append(get_el_text(mte))
-                elif inst.find("pbcore:instantiationPhysical",ns) is not None:
-                    phs_mts.append(get_el_text(mte))
-        if 'Moving Image' in dig_mts:
-            media_type = 'Moving Image'
-        elif 'Sound' in dig_mts:
-            media_type = 'Sound'
-        elif 'Moving Image' in phs_mts:
-            media_type = 'Moving Image'
-        elif 'Sound' in phs_mts:
-            media_type = 'Sound'
-        elif len(dig_mts) > 0:
-            media_type = dig_mts[0]
-        elif len(phs_mts) > 0:
-            media_type = phs_mts[0]
-        else:
-            media_type = ''
+        # Instantiation duration
+        att = ""
+        e = inst.find("pbcore:instantiationDuration"+att,ns)
+        inst_duration = get_el_text(e)
 
-        # Proxy duration 
-        # (Note: This is not an element that is part of the asset records, but it
-        #  is useful to infer this where possible.)
-        # Take the duration of the first digital instatniation where the generation 
-        # equals "Proxy"
-        proxy_duration = ""
-        insts = root.findall(".//pbcore:pbcoreInstantiation",ns)
-        for inst in insts:
-            if inst.find("pbcore:instantiationDigital",ns) is not None:
-                e = inst.find("pbcore:instantiationGenerations",ns)
-                if (not proxy_duration) and e is not None:
-                    if ( get_el_text(e) == "Proxy" ):
-                        e = inst.find("pbcore:instantiationDuration",ns)
-                        if e is not None:
-                            proxy_duration = get_el_text(e)
+        # Instantiation location
+        att = ""
+        e = inst.find("pbcore:instantiationLocation"+att,ns)
+        inst_location = get_el_text(e)
 
-
-        # Instantiation records
-        insts = root.findall(".//pbcore:pbcoreInstantiation",ns)
-        for inst in insts:
-
-            # Instantiation identifers
-            # handling multiple values by concatenating all of them into a |-separated list
-            att = ""
-            es = inst.findall("pbcore:instantiationIdentifier",ns)
-            tlist = [ get_el_text(e) for e in es ]
-            inst_identifiers = '|'.join(tlist)
-
-            # Instantiation media type
-            att = ""
-            e = inst.find("pbcore:instantiationMediaType"+att,ns)
-            inst_media_type = get_el_text(e)
-
-            # Instantiation date
-            att = ""
-            e = inst.find("pbcore:instantiationDate"+att,ns)
-            inst_date = get_el_text(e)
-
-            # Instantiation digital format
-            att = ""
-            e = inst.find("pbcore:instantiationDigital"+att,ns)
-            inst_digital_format = get_el_text(e)
-
-            # Instantiation physical format
-            att = ""
-            e = inst.find("pbcore:instantiationPhysical"+att,ns)
-            inst_physical_format = get_el_text(e)
-
-            # Instantiation generations
-            att = ""
-            e = inst.find("pbcore:instantiationGenerations"+att,ns)
-            inst_generations = get_el_text(e)
-
-            # Instantiation duration
-            att = ""
-            e = inst.find("pbcore:instantiationDuration"+att,ns)
-            inst_duration = get_el_text(e)
-
-            # Instantiation location
-            att = ""
-            e = inst.find("pbcore:instantiationLocation"+att,ns)
-            inst_location = get_el_text(e)
-
-                # Add the collected instantiation-level values to the table
-            insttbl.append({
-                "asset_id": asset_id,
-                "inst_identifiers": inst_identifiers,
-                "inst_media_type": inst_media_type,
-                "inst_digital_format": inst_digital_format,
-                "inst_physical_format": inst_physical_format,
-                "inst_generations": inst_generations,
-                "inst_duration": inst_duration,
-                "inst_location": inst_location
-            })
-
-
-        # Add the collected asset-level values to the table
-        assttbl.append({
+        # Add the collected instantiation-level values to the dict
+        insttbl.append({
             "asset_id": asset_id,
-            "aapb_pbcore_id": aapb_pbcore_id, 
-            "sonyci_id": sonyci_id,
-            "other_id_1": other_id_1,
-            "other_id_2": other_id_2,
-            "other_id_3": other_id_3,
-            "media_type": media_type,
-            "asset_type": asset_type, 
-            "contributing_organization": contributing_organization,
-            "level_of_user_access": level_of_user_access,
-            "special_collections": special_collections,
-            "transcript_status": transcript_status,
-            "transcript_url": transcript_url,
-            "proxy_start_time": proxy_start_time,
-            "broadcast_date": broadcast_date,
-            "created_date": created_date,
-            "copyright_date": copyright_date,
-            "date": date,
-            "single_date": single_date,
-            "series_title": series_title,
-            "program_title": program_title,
-            "episode_title": episode_title,
-            "episode_number": episode_number,
-            "segment_title": segment_title,
-            "raw_footage_title": raw_footage_title,
-            "promo_title": promo_title,
-            "clip_title": clip_title,
-            "title": title,
-            "consolidated_title": consolidated_title,
-            "series_description": series_description,
-            "program_description": program_description,
-            "episode_description": episode_description,
-            "segment_description": segment_description,
-            "raw_footage_description": raw_footage_description,
-            "promo_description": promo_description,
-            "clip_description": clip_description,
-            "description": description,
-            "consolidated_description": consolidated_description,
-            "producing_organization": producing_organization,
-            "proxy_duration": proxy_duration
+            "inst_identifiers": inst_identifiers,
+            "inst_media_type": inst_media_type,
+            "inst_digital_format": inst_digital_format,
+            "inst_physical_format": inst_physical_format,
+            "inst_generations": inst_generations,
+            "inst_duration": inst_duration,
+            "inst_location": inst_location
         })
 
 
-        #### CAT-AUD ##############################################
-        # Find all those with multiple SonyCi IDs
-        att = "[@source='Sony Ci']"
-        es = root.findall(".//pbcore:pbcoreIdentifier"+att,ns)
-        if len(es) == 1:
-            single_sonyci_id = True
-        elif len(es) < 1:
-            single_sonyci_id = False
-            noci_guids.append(asset_id)
-        else:
-            single_sonyci_id = False
-            multici_guids.append(asset_id)
+    # Add the collected asset-level values to the dict
+    asstdict = {
+        "asset_id": asset_id,
+        "aapb_pbcore_id": aapb_pbcore_id, 
+        "sonyci_id": sonyci_id,
+        "other_id_1": other_id_1,
+        "other_id_2": other_id_2,
+        "other_id_3": other_id_3,
+        "media_type": media_type,
+        "asset_type": asset_type, 
+        "contributing_organization": contributing_organization,
+        "level_of_user_access": level_of_user_access,
+        "special_collections": special_collections,
+        "transcript_status": transcript_status,
+        "transcript_url": transcript_url,
+        "proxy_start_time": proxy_start_time,
+        "broadcast_date": broadcast_date,
+        "created_date": created_date,
+        "copyright_date": copyright_date,
+        "date": date,
+        "single_date": single_date,
+        "series_title": series_title,
+        "program_title": program_title,
+        "episode_title": episode_title,
+        "episode_number": episode_number,
+        "segment_title": segment_title,
+        "raw_footage_title": raw_footage_title,
+        "promo_title": promo_title,
+        "clip_title": clip_title,
+        "title": title,
+        "consolidated_title": consolidated_title,
+        "series_description": series_description,
+        "program_description": program_description,
+        "episode_description": episode_description,
+        "segment_description": segment_description,
+        "raw_footage_description": raw_footage_description,
+        "promo_description": promo_description,
+        "clip_description": clip_description,
+        "description": description,
+        "consolidated_description": consolidated_description,
+        "producing_organization": producing_organization,
+        "proxy_duration": proxy_duration
+    }
+
+    return (asstdict, insttbl)
 
 
-        # testing for mixed types of digital instantiations
-        if ( len(dig_mts) > 1 and 
-            not all(mt==dig_mts[0] for mt in dig_mts) and
-            'Moving Image' in dig_mts and
-            'Sound' in dig_mts ):
-            mismatch_dig_media_types_guids[asset_id] = dig_mts
+    #### CAT-AUD ##############################################
+    # Find all those with multiple SonyCi IDs
+    att = "[@source='Sony Ci']"
+    es = root.findall(".//pbcore:pbcoreIdentifier"+att,ns)
+    if len(es) == 1:
+        single_sonyci_id = True
+    elif len(es) < 1:
+        single_sonyci_id = False
+        noci_guids.append(asset_id)
+    else:
+        single_sonyci_id = False
+        multici_guids.append(asset_id)
 
-        #### CAT-AUD ##############################################
 
-    return ( assttbl, insttbl )
+    # testing for mixed types of digital instantiations
+    if ( len(dig_mts) > 1 and 
+        not all(mt==dig_mts[0] for mt in dig_mts) and
+        'Moving Image' in dig_mts and
+        'Sound' in dig_mts ):
+        mismatch_dig_media_types_guids[asset_id] = dig_mts
+
+    #### CAT-AUD ##############################################
+
 
 ############################################################################
 # %%

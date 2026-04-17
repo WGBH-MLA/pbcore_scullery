@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pbcore-scullery"
-version = "0.51" 
+version = "0.52" 
 description = "Utilities for analyzing PBCore XML data by fitting it in a tabular structure" 
 readme = "README.md"
 requires-python = ">=3.8"
